@@ -1,0 +1,33 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+--use IEEE.STD_LOGIC_ARITH.ALL;
+--use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity shift_register is
+    Port ( clk, OE1, OE2 : in STD_LOGIC;
+           S : in STD_LOGIC_VECTOR(1 downto 0);
+           IO : in STD_LOGIC_VECTOR(7 downto 0);
+           Q, Oper : inout STD_LOGIC_VECTOR(7 downto 0));
+end shift_register;
+
+architecture Behavioral of shift_register is
+    signal shift_reg : STD_LOGIC_VECTOR(7 downto 0) := (others => '0');
+begin
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if S = "11" then
+                Q <= IO;
+            elsif S = "10" then
+                Q <= Oper(0) & Q(7 downto 1);
+                Oper <= Q(0) & Oper(7 downto 1);
+            elsif S = "01" then
+                Q <= Q(6 downto 0) & Oper(7);
+                Oper <= Oper(6 downto 0) & Q(7);
+            elsif S = "00" then
+                Q <= Q;
+                Oper <= Oper;
+            end if;            
+        end if;
+    end process;
+end Behavioral;
