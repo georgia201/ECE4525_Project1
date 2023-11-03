@@ -33,8 +33,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity SDPM is
 
-    port(START, RESET, CLK: in std_logic;
-         OP1, OP2: in std_logic_vector(7 downto 0);
+    port(START, RESET, CLK, Q71, Q72: in std_logic;
          DONE, OVF, OP_LD, RES_LD, BUFEN1, BUFEN2, DS0: out std_logic;
          SRC2, SRC1: out std_logic_vector(1 downto 0);
          RES: out std_logic_vector(7 downto 0));
@@ -51,7 +50,7 @@ end component;
     type state_type is (idle, S1, S2, S3, S4);
     signal present_state, next_state: state_type:= idle;
     signal A, B, sum, shift_out, Q7: std_logic;
-    signal temp0: std_logic;
+    signal OP1, OP2: std_logic_vector(7 downto 0);
 
 begin
     
@@ -59,8 +58,8 @@ begin
 
     SDPM_process: process(START, RESET, CLK, OP1, OP2)
     
-        variable cntr: integer;
-        constant shift: integer := 8;
+        variable cntr: integer := 7;
+        constant shift: integer := 0;
         
         begin
         case present_state is
@@ -68,32 +67,37 @@ begin
                 DONE <= '1';
                 next_state <= S1;
                 
-            when S1 =>
+            when S1 =>                  -- parallel load mode
                 if START = '1' then
                     DONE <= '0';
                     OP_LD <= '1';
+                    SRC2 <= "11";
+                    SRC1 <= "11"; 
+                    OP1(7) <= Q71;      -- loads Q7 from reg 1 into bit 7 of OP1 when first loaded
+                    OP2(7) <= Q72;      -- loads Q7 from reg 2 into bit 7 of OP2 when first loaded
+                    next_state <= S2;
+                else
+                    next_state <= idle;
                 end if;
+                    
                 
                 next_state <= S2;
                 
-            when S2 =>                  -- parallel load mode
-                OP_LD <= '1';
-                SRC2 <= "11";
-                SRC1 <= "11";
-                next_state <= S3;
-                
-            when S3 =>                  -- right shift mode
+            when S2 =>                  -- right shift mode
                 OP_LD <= '1';
                 SRC2 <= "01";
                 SRC1 <= "01";
                 if cntr = shift then
+                    cntr := 7;
                     SRC2 <= "00";       -- enters hold mode
                     SRC1 <= "00";
-                    next_state <= S4;
-                else 
-                    cntr:= cntr + 1;
                     next_state <= S3;
-                end if;
+                else 
+                    cntr:= cntr - 1;
+                    OP1(cntr) <= Q71;
+                    OP2(cntr) <= Q72;
+                    next_state <= S2;
+                end if;        
                 
             when S4 => 
                 OP_LD <= '0';           -- OP_LD is deasserted, Operands are both done loading in the board
