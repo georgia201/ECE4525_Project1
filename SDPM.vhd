@@ -107,7 +107,6 @@ begin
             
             when S4 =>
                 RES_LD <= '1';
-                SRC2 <= "01";
                 SRC1 <= "01";
                 if cntr2 = shift then
                     cntr2 := 8;
@@ -119,6 +118,8 @@ begin
                 end if;
 
             when S5 => 
+                SRC1 <= "00";
+                
                 
                     
             
