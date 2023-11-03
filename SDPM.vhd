@@ -99,9 +99,9 @@ begin
                     next_state <= S2;
                 end if;        
                 
-            when S4 => 
+            when S3 => 
                 OP_LD <= '0';           -- OP_LD is deasserted, Operands are both done loading in the board
-                
+                serialadder: serialadder port map(
             
             when others =>
             
