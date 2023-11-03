@@ -43,22 +43,24 @@ end SDPM;
 architecture Behavioral of SDPM is
 
 component serialadder
-    port(A, B, CLK, RESET: in std_logic;
-         sum, CY: out std_logic);   
+  port(A, B: in std_logic_vector (7 downto 0); 
+       reset, clk : in std_logic;
+       Cin : in std_logic;
+       OVF : out std_logic;
+       RES : out std_logic_vector (7 downto 0));
 end component;
 
     type state_type is (idle, S1, S2, S3, S4);
     signal present_state, next_state: state_type:= idle;
-    signal A, B, sum, shift_out, Q7: std_logic;
+    signal A, B, Cin: std_logic;
     signal OP1, OP2: std_logic_vector(7 downto 0);
 
 begin
-    
-    adder: SerialBitAdder port map(A => A, B => B, CLK => CLK, RESET => RESET, sum => sum, CY => OVF);
 
-    SDPM_process: process(START, RESET, CLK, OP1, OP2)
+    SDPM_process: process(START, RESET, CLK, OP1, OP2, DS0, Q71, Q72)
     
-        variable cntr: integer := 7;
+        variable cntr1: integer := 7;
+        variable cntr2: integer := 8;
         constant shift: integer := 0;
         
         begin
@@ -79,7 +81,6 @@ begin
                 else
                     next_state <= idle;
                 end if;
-                    
                 
                 next_state <= S2;
                 
@@ -87,23 +88,39 @@ begin
                 OP_LD <= '1';
                 SRC2 <= "01";
                 SRC1 <= "01";
-                if cntr = shift then
-                    cntr := 7;
+                if cntr1 = shift then
+                    cntr1 := 7;
                     SRC2 <= "00";       -- enters hold mode
                     SRC1 <= "00";
                     next_state <= S3;
                 else 
-                    cntr:= cntr - 1;
-                    OP1(cntr) <= Q71;
-                    OP2(cntr) <= Q72;
+                    cntr1:= cntr1 - 1;
+                    OP1(cntr1) <= Q71;
+                    OP2(cntr1) <= Q72;
                     next_state <= S2;
                 end if;        
                 
             when S3 => 
-                OP_LD <= '0';           -- OP_LD is deasserted, Operands are both done loading in the board
-                serialadder: serialadder port map(A => OP1, B => OP2, 
+                OP_LD <= '0';           -- OP_LD is deasserted, operands are both done loading in the board
+                serialadder: serialadder port map(A => OP1, B => OP2, reset => RESET, clk => CLK, Cin => Cin, OVF => OVF, RES => RES);
+                next_state <= S4;
             
-            when others =>
+            when S4 =>
+                RES_LD <= '1';
+                SRC2 <= "01";
+                SRC1 <= "01";
+                if cntr2 = shift then
+                    cntr2 := 8;
+                    next_state <= S5;
+                else
+                    cntr2 := cntr2 - 1;
+                    DS0 <= RES(cntr);
+                    next_state <= S4;
+                end if;
+
+            when S5 => 
+                
+                    
             
         end case;
     end process;
