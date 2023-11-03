@@ -74,11 +74,6 @@ begin
      c(6) <= (A(6) and B2C(6)) or (c(5) and (A(6) xor B2C(6)));
      Sum(7) <= A(7) xor B2C(7) xor c(6);         
      c(7) <= (A(7) and B2C(7)) or (c(6) and (A(7) xor B2C(7)));
-        --for i in 1 to 7 loop
-          --temp_Sum(i) <= A(i) xor B(i) xor c(i-1);         
-          --c(i) <= (A(0) and B(0)) or (c(i-1) and (A(0) xor B(0)));
-        --end loop;
-        -- Cin <= '0';
   end process;
   
   process(Sum)
