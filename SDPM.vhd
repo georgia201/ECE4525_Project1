@@ -34,7 +34,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity SDPM is
 
     port(START, RESET, CLK, Q71, Q72: in std_logic;
-         DONE, OVF, OP_LD, RES_LD, BUFEN1, BUFEN2, DS0: out std_logic;
+         DONE, OVF, OP_LD, RES_LD, OE1, OE2, DS0: out std_logic;
          SRC2, SRC1: out std_logic_vector(1 downto 0);
          RES: out std_logic_vector(7 downto 0));
    
@@ -42,7 +42,7 @@ end SDPM;
 
 architecture Behavioral of SDPM is
 
-component SerialBitAdder
+component serialadder
     port(A, B, CLK, RESET: in std_logic;
          sum, CY: out std_logic);   
 end component;
@@ -101,7 +101,7 @@ begin
                 
             when S3 => 
                 OP_LD <= '0';           -- OP_LD is deasserted, Operands are both done loading in the board
-                serialadder: serialadder port map(
+                serialadder: serialadder port map(A => OP1, B => OP2, 
             
             when others =>
             
