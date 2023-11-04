@@ -12,7 +12,7 @@ add_force START {1 0ns}
 add_force RESET {1 0ns}  
 add_force Q71 {0 0ns}  
 add_force Q72 {0 0ns}
-run 60ns
+run 120ns
 
 add_force Q71 {1 0ns}  
 add_force Q72 {0 0ns}
@@ -20,8 +20,5 @@ run 20ns
 
 add_force Q71 {0 0ns}  
 add_force Q72 {1 0ns}
-run 20ns
+run 250ns
 
-add_force Q71 {0 0ns}  
-add_force Q72 {0 0ns}
-run 160ns
