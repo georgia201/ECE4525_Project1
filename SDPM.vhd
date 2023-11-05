@@ -24,7 +24,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -41,8 +41,12 @@ end SDPM;
 
 architecture Behavioral of SDPM is
 
-    type state_type is (idle, S2, S4, S5);
+    type state_type is (idle, S1, S2, S3, S4, S5);
     signal present_state, next_state: state_type:= idle;
+    signal OP1, OP2, RES: std_logic_vector(7 downto 0);
+    signal cntr1: integer := 7;
+    signal cntr2: integer := 8;
+    constant shift: integer := 0;
 
 component serialadder
   port(A, B: in std_logic_vector (7 downto 0); 
@@ -52,107 +56,113 @@ component serialadder
        RES : out std_logic_vector (7 downto 0));
 end component;
 
-    signal OP1, OP2, RES: std_logic_vector(7 downto 0);
-    signal cntr1: integer := 7;
-    signal cntr2: integer := 7;
-    signal shift: integer := 0;
-
 begin
 
     adder: serialadder port map(A => OP1, B => OP2, reset => RESET, clk => CLK, Cin => '0', OVF => OVF, RES => RES);
 
-    SDPM_process: process(START, RESET, CLK, OP1, OP2, Q71, Q72)
+    process(START, RESET, CLK, OP1, OP2, Q71, Q72)
         
       begin
-        case present_state is
+      
+        if (RESET = '0') then
+            DONE <= '1';
+            OP_LD <= '0';
+            RES_LD <= '0';
+            SRC2 <= "00";
+            SRC1 <= "00";
+            OP2 <= "00000000";
+            OP1 <= "00000000";
+            OE1 <= '1';
+            OE2 <= '1';
+            
+        elsif (CLK'event and CLK = '1') then
+            present_state <= next_state;
+      
+          case present_state is
+
             when idle =>
+                --OP2 <= "00000000";
+                --OP1 <= "00000000";
                 DONE <= '1';
-                OP_LD <= '0';
                 RES_LD <= '0';
                 SRC2 <= "00";
                 SRC1 <= "00";
-                next_state <= S2;
+                OE1 <= '0';         -- enable buffers for parallel load
+                OE2 <= '0';
+                next_state <= S1; 
             
-            if START = '1' then
-                --OP2 <= "00000000";
-                --OP1 <= "00000000";
+                if (START = '1') then
+                    next_state <= S1;
+                else
+                    next_state <= idle;
+                end if;
+            
+            
+            when S1 => 
                 DONE <= '0';
                 OP_LD <= '1';
-                RES_LD <= '0';
+                
                 SRC2 <= "11";
                 SRC1 <= "11";
-                OE1 <= '0';         -- enable buffers for parallel load
-                OE2 <= '0'; 
+                OE1 <= '1';         -- enable buffers for parallel load
+                OE2 <= '1';
                 OP1(7) <= Q71;      -- loads Q7 from reg 1 into bit 7 of OP1 when first loaded
-                OP2(7) <= Q72;      -- loads Q7 from reg 2 into bit 7 of OP2 when first loaded
+                OP2(7) <= Q72;      -- loads Q7 from reg 2 into bit 7 of OP2 when first loaded 
+                
                 next_state <= S2;
-            else
-                next_state <= idle;
-            end if;
+                
                 
             when S2 =>                  -- right shift mode
-                OP_LD <= '1';
                 SRC2 <= "01";
                 SRC1 <= "01";
                 OE1 <= '1';             -- disable buffers
                 OE2 <= '1';
-            if (cntr1 = shift) then
-                SRC2 <= "00";       -- enters hold mode
-                SRC1 <= "00";
-                next_state <= S4;
-            elsif (cntr1 > shift) then
-                if (CLK'event and CLK = '1') then
+                
+                if (cntr1 = 0) then
+                    next_state <= S3;
+                elsif (cntr1 > 0) then
                     cntr1 <= cntr1 - 1;
-                    OP1(cntr1) <= Q71;
-                    OP2(cntr1) <= Q72;
+                    OP1(cntr1-1) <= Q71;
+                    OP2(cntr1-1) <= Q72;
                     next_state <= S2;
+                --else next_state <= S4;
                 end if;
-            else next_state <= S4;
-            end if; 
+
+            when S3 => 
+                cntr1 <= 7;
+                SRC2 <= "00";
+                SRC1 <= "00";
+                OP_LD <= '0';
+                next_state <= S4;
             
             when S4 =>
-                cntr1 <= 7;
-                OP_LD <= '0';
                 RES_LD <= '1';
                 SRC1 <= "01";
                 OE1 <= '1';            -- keep buffers disabled
                 OE2 <= '1';
-            if cntr2 = shift then
-                cntr2 <= 7;
-                next_state <= S5;
-            elsif (cntr2 > shift) then
-                if (CLK'event and CLK = '1') then
+                
+                if (cntr2 = 0) then
+                    next_state <= S5;
+                elsif (cntr2 > 0) then
                     cntr2 <= cntr2 - 1;
-                    DS0 <= RES(cntr2);
+                    DS0 <= RES(8-cntr2);
                     next_state <= S4;
+                --else next_state <= S5;
                 end if;
-            else next_state <= S5;
-            end if;
 
-            when S5 => 
-                cntr2 <= 7;
+            when S5 =>
+                cntr2 <= 8; 
                 SRC1 <= "00";
-                RES_LD <= '0';
-                DONE <= '1';
-                OE1 <= '0';
-                OE2 <= '0';
+                SRC2 <= "00";
+                RES_LD <= '1';
+                OE1 <= '1';
+                OE2 <= '1';
                 next_state <= idle;
                 
             when others => next_state <= idle;
             
-        end case;
-    end process SDPM_process;
-            
-    clk_process: process (CLK, RESET)
-     begin
-       if RESET = '1' then
-           present_state <= idle;
-       elsif (CLK'event and CLK = '1') then
-            present_state <= next_state;
-       else
-           present_state <= present_state;
-       end if;
-
-    end process clk_process;
+          end case;
+        end if;
+    end process;
  
 end Behavioral;
